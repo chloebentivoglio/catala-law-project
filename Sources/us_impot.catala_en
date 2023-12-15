@@ -1,0 +1,65 @@
+# Premier test avec Catala
+
+```catala-metadata
+declaration structure Person:
+  data id content integer
+```
+
+```catala-metadata
+declaration structure Contribuable:
+  data revenu_brut content argent
+  data statut content Statut
+```
+
+```catala-metadata
+declaration enumeration Statut  :
+  -- MARIE
+  -- VEUF
+  -- CELIBATAIRE
+  -- DIVORCE
+```
+
+```catala-metadata
+declaration structure Vente:
+  data gain content argent
+  data date content date
+  data date_debut_occupation content date
+  data date_fin_occupation content date
+```
+
+```catala
+declaration scope ConditionOne :
+  input contribuable content Contribuable
+  input vente content Vente
+  context gain_cap content money
+  output cond1 condition
+```
+
+```catala
+scope ConditionOne :
+  input contribuable content Contribuable
+  input vente content Vente
+  definition gain_cap equals $250,000
+
+  rule cond1 under condition
+    aggregate_periods_from_last_five_years of property_ownage >= 730 day
+  consequence fulfilled
+
+  definition income_excluded_from_gross_income equals
+    if income_excluded_from_gross_income_uncapped >= gain_cap then
+      gain_cap
+    else
+      income_excluded_from_gross_income_uncapped
+
+scope Section121TwoPersons:
+    definition gain_cap equals section121Person1.gain_cap
+
+    definition income_excluded_from_gross_income equals
+    if income_excluded_from_gross_income_uncapped >= gain_cap then
+      gain_cap
+    else
+      income_excluded_from_gross_income_uncapped
+```
+
+
+

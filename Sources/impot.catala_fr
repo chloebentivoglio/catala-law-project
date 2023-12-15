@@ -1,0 +1,135 @@
+# Premier test avec Catala
+
+## Déclaration Structure
+### Structure Personne
+### Une structure ne peut contenir que des données
+### Une Personne peut avoir un revenu qui est de type argent
+### Et également un age qui est de type entier
+```catala-metadata
+déclaration structure Personne:
+  donnée revenu contenu argent
+  donnée age contenu entier
+```
+## Déclaration Structure
+### Structure Impôt
+### Un Impôt peut avoir un taux qui est de type décimal
+```catala-metadata
+déclaration structure Impôt:
+  donnée taux contenu décimal
+```
+
+## Déclaration champ d'application
+### Champ d'application CalculImpot
+### Un champ d'application peut contenir des variables d'entrées et de sortie
+### Même principe qu'une fonction
+```catala
+déclaration champ d'application CalculImpôt :
+  entrée impot contenu Impôt
+  résultat formule_impôt contenu argent
+    dépend de revenu contenu argent
+```
+
+## Définition du champs d'application
+### Notre champs d'application CalculImpôt va calculer un nouveau revenu fictif
+### Ce champs d'application prend une valeur d'entrée qui est une structure Impot, 
+### récupère l'élement taux de la structure et on lui applique une formule
+```catala
+champ d'application CalculImpôt :
+  définition formule_impôt de revenu égal à
+    si revenu <= 100 000€ alors
+        revenu * impot.taux
+    sinon (
+        revenu * impot.taux + 10 000€
+    )
+```
+
+## Déclaration champ d'application
+### Champ d'application NouveauCalculImpôtRevenu
+### Ce champs d'application va faire le lien entre une structure Personne donnée en entrée et le champs d'application CalculImpôt qui sera définit
+```catala
+déclaration champ d'application NouveauCalculImpôtRevenu:
+  calcul_nouvel_impot champ d'application CalculImpôt
+  entrée personne contenu Personne
+  résultat impôt_revenu contenu argent
+```
+
+## Définition du champs d'application
+### On définit une structure Impôt avec un taux fictif
+### L'avantage de passer par un champ d'application comme cela, va nous permettre par exemple de redéfinir NouveauCalculImpôtRevenu plus tard
+### Par exemple, on peux redéfinir plus tard que le taux ne sera plus de 20% mais de 30% sans modifier le code
+```catala
+champ d'application NouveauCalculImpôtRevenu :
+  définition calcul_nouvel_impot.impot égal à Impôt {
+    -- taux: 20%
+  }
+
+  définition impôt_revenu égal à
+    calcul_nouvel_impot.formule_impôt de personne.revenu
+```
+
+## Redéfinition du champs d'application
+#### Si une personne à moins de 10 000€ de revenu, alors son impôt sera de 0€
+```catala
+champ d'application NouveauCalculImpôtRevenu:
+  définition impôt_revenu sous condition
+    personne.revenu <= 40 000€
+  conséquence égal à 0€
+```
+
+## Test unitaire n°1
+### Test sur le calcul d'impôt et l'ajout des 10 000€ d'intéret en plus
+### On vérifie également que le taux est bien à 20% car age > 52
+### OK
+#### Executer test1 : catala Interpret --scope=Test1 impot.catala_fr
+```catala
+déclaration champ d'application Test1:
+  calcul_impôt champ d'application NouveauCalculImpôtRevenu
+  résultat impôt_revenu contenu argent
+
+champ d'application Test1:
+  définition calcul_impôt.personne égal à
+    Personne {
+      -- revenu: 230 000€
+      -- age: 52
+    }
+  définition impôt_revenu égal à calcul_impôt.impôt_revenu
+  assertion impôt_revenu = 56 000€
+```
+
+## Test unitaire n°2
+### On vérifie que la somme calculé avec les données fournis correspond au montant final attendu
+### PAS OK
+#### Executer test2 : catala Interpret --scope=Test2 impot.catala_fr
+```catala
+déclaration champ d'application Test2:
+  calcul_impôt champ d'application NouveauCalculImpôtRevenu
+  résultat impôt_revenu contenu argent
+
+champ d'application Test2:
+  définition calcul_impôt.personne égal à
+    Personne {
+      -- revenu: 230 000€
+      -- age: 30
+    }
+  définition impôt_revenu égal à calcul_impôt.impôt_revenu
+  assertion impôt_revenu = 42 000€
+```
+
+## Test unitaire n°3
+### Les personnes avec un revenu inférieur à 40000€ ne payent pas d'impôt
+### OK
+#### Executer test3 : catala Interpret --scope=Test3 impot.catala_fr
+```catala
+déclaration champ d'application Test3:
+  calcul_impôt champ d'application NouveauCalculImpôtRevenu
+  résultat impôt_revenu contenu argent
+
+champ d'application Test3:
+  définition calcul_impôt.personne égal à
+    Personne {
+      -- revenu: 40 000€
+      -- age: 34
+    }
+  définition impôt_revenu égal à calcul_impôt.impôt_revenu
+  assertion impôt_revenu = 0€
+```
